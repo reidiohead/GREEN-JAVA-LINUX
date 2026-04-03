@@ -1,0 +1,8 @@
+java.io.FileInputStream.readBytes,0.0000
+java.lang.ref.Reference.waitForReferencePendingList,0.0000
+java.lang.ProcessImpl.waitForInterruptibly,0.0000
+jdk.jfr.internal.JVM.emitEvent,0.0000
+java.lang.Object.wait0,0.0000
+java.io.FileInputStream.readBytes,0.0000
+org.example.DummyBenchmark.simulateLongMethodSmell,0.0000
+java.util.concurrent.ThreadPoolExecutor.processWorkerExit,0.0000

@@ -1,0 +1,9 @@
+jdk.jfr.internal.JVM.emitEvent,0.0000
+java.lang.ProcessImpl.waitForInterruptibly,0.0000
+java.util.WeakHashMap.put,0.0000
+java.lang.System.nanoTime,0.0000
+jdk.internal.misc.Unsafe.park,0.0000
+org.example.jmh_generated.DummyBenchmark_simulateLongMethodSmell_jmhTest.simulateLongMethodSmell_avgt_jmhStub,0.0000
+java.io.FileInputStream.readBytes,0.0000
+java.lang.ref.Reference.waitForReferencePendingList,0.0000
+java.io.FileInputStream.readBytes,0.0000
