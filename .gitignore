@@ -22,6 +22,15 @@ target/
 .springBeans
 .sts4-cache
 
+# SonarQube Scanner
+.scannerwork/
+
+# JoularJX & JMH Output
+joularjx-result/
+*.jfr
+*.csv
+
+
 ### NetBeans ###
 /nbproject/private/
 /nbbuild/

@@ -5,8 +5,6 @@ import java.awt.*;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.InputStreamReader;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public class Main {
 
@@ -85,14 +83,14 @@ public class Main {
 
                     String projectName = targetFolder.getName().replaceAll("[^a-zA-Z0-9_.-]", "_");
                     String dynamicProjectKey = "greenjava_" + projectName;
-                    String sqToken = "squ_d802d4577d06f9be972233c1c26b42ca8166ec25";
+                    String sqToken = "squ_5801d173875ddfb825d7dd207498dc73372c1e2d";
 
                     java.util.List<String> sonarCmd = new java.util.ArrayList<>();
                     if (isWin) {
                         sonarCmd.add("cmd.exe"); sonarCmd.add("/c");
                         sonarCmd.add("D:\\SonarScanner\\sonar-scanner-cli-8.0.1.6346-windows-x64\\sonar-scanner-8.0.1.6346-windows-x64\\bin\\sonar-scanner.bat");
                     } else {
-                        sonarCmd.add("sonar-scanner");
+                        sonarCmd.add("/home/rei/Documents/GreenJava/BuildCode/sonar-scanner/sonar-scanner-8.0.1.6346-linux-x64/bin/sonar-scanner");
                     }
                     sonarCmd.add("-Dsonar.projectKey=" + dynamicProjectKey);
                     sonarCmd.add("-Dsonar.sources=.");
@@ -119,7 +117,7 @@ public class Main {
                     if (isWin) {
                         mvnCmd.add("cmd.exe"); mvnCmd.add("/c"); mvnCmd.add("mvn clean package -DskipTests");
                     } else {
-                        mvnCmd.add("mvn clean package -DskipTests");
+                        mvnCmd.add("mvn"); mvnCmd.add("clean"); mvnCmd.add("package"); mvnCmd.add("-DskipTests");
                     }
                     ProcessBuilder mvnPb = new ProcessBuilder(mvnCmd);
                     mvnPb.directory(targetFolder);
@@ -134,24 +132,23 @@ public class Main {
                     }
 
                     // --- NEW GREEN JAVA POWER PIPELINE ---
-                    String joularCoreExePath = currentDir + "\\tools\\joularcore.exe";
                     PowerMonitor monitor = new PowerMonitor();
 
                     publish("\n2. Initializing Hardware Power Sensors...\n");
 
-                    // --- THE NEW COOL-DOWN PHASE ---
                     publish("[GREEN JAVA] Cooling down CPU from Maven build (Waiting 5 seconds)...\n");
                     Thread.sleep(5000);
 
                     publish("[GREEN JAVA] Gathering 5-second Idle Baseline. Please do not move the mouse...\n");
 
-                    monitor.startMonitor(joularCoreExePath);
+                    monitor.startMonitor("");
                     Thread.sleep(5000); // 5 second baseline trap
                     double baselineWatts = monitor.stopAndGetAverage();
                     publish(String.format("[GREEN JAVA] Idle Baseline Established: %.2f W\n\n", baselineWatts));
 
                     publish("3. Launching JMH Treadmill...\n");
-                    String joularJxPath = currentDir + "\\tools\\joularjx-3.1.0.jar";
+
+                    String joularJxPath = currentDir + (isWin ? "\\tools\\joularjx-3.1.0.jar" : "/tools/joularjx-3.1.0.jar");
                     java.util.List<String> runCmd = new java.util.ArrayList<>();
 
                     if (isWin) {
@@ -161,10 +158,17 @@ public class Main {
                                 "-jvmArgs=\"-javaagent:\\\"" + joularJxPath + "\\\"\" " +
                                 "-i 30 -wi 5 -f 1 -r 1s -w 1s -prof jfr";
                         runCmd.add(fullCmd);
+                    } else {
+                        runCmd.add("sh");
+                        runCmd.add("-c");
+                        // THE FIX: The sudo bypass is now inside the -jvmArgs quotes!
+                        String fullCmd = "java -jar target/benchmarks.jar " +
+                                "-jvmArgs=\"-javaagent:" + joularJxPath + " -Djoularjx.sudo=false\" " +
+                                "-i 30 -wi 5 -f 1 -r 1s -w 1s -prof jfr";
+                        runCmd.add(fullCmd);
                     }
 
-                    // Start measuring active power BEFORE JMH starts
-                    monitor.startMonitor(joularCoreExePath);
+                    monitor.startMonitor("");
 
                     ProcessBuilder runPb = new ProcessBuilder(runCmd);
                     runPb.directory(targetFolder);
@@ -176,7 +180,6 @@ public class Main {
 
                     while ((line = runReader.readLine()) != null) {
                         publish(line + "\n");
-                        // Auto-extract the JMH score from the console output
                         if (line.contains("avgt") && line.contains("ms/op")) {
                             String[] parts = line.trim().split("\\s+");
                             for(int i = 0; i < parts.length; i++) {
@@ -191,15 +194,13 @@ public class Main {
 
                     int exitCode = runProcess.waitFor();
 
-                    // Stop measuring the exact moment JMH finishes
                     double activeWatts = monitor.stopAndGetAverage();
 
                     if (exitCode == 0) {
                         publish("\n>>> DYNAMIC PROFILING COMPLETE!\n");
 
-                        // --- FINAL EIS CALCULATION ---
                         double netWatts = activeWatts - baselineWatts;
-                        if (netWatts < 0) netWatts = 0; // Prevent negative readings if baseline was skewed
+                        if (netWatts < 0) netWatts = 0;
 
                         double jmhTimeSeconds = jmhScoreMs / 1000.0;
                         double finalJoules = netWatts * jmhTimeSeconds;
@@ -236,55 +237,42 @@ public class Main {
         worker.execute();
     }
 
-    // --- INNER CLASS: HIDDEN POWER MONITOR ---
+    // --- INNER CLASS: NATIVE LINUX RAPL MONITOR ---
     public static class PowerMonitor {
-        private Process joularProcess;
-        private double totalWatts = 0;
-        private int readingCount = 0;
-        private boolean isMonitoring = false;
+        private final String RAPL_PATH = "/sys/class/powercap/intel-rapl:0/energy_uj";
+        private long startMicroJoules = 0;
+        private long startTimeNano = 0; // FIX: Changed to Nano for precision
 
-        public void startMonitor(String exePath) {
-            totalWatts = 0;
-            readingCount = 0;
-            isMonitoring = true;
-
-            try {
-                ProcessBuilder pb = new ProcessBuilder(exePath);
-                pb.redirectErrorStream(true);
-                joularProcess = pb.start();
-
-                new Thread(() -> {
-                    try (BufferedReader reader = new BufferedReader(new InputStreamReader(joularProcess.getInputStream()))) {
-                        String line;
-                        Pattern powerPattern = Pattern.compile("CPU\\s+([0-9.]+)\\s+W");
-
-                        while (isMonitoring && (line = reader.readLine()) != null) {
-                            // Strip ANSI color codes
-                            String cleanLine = line.replaceAll("\u001B\\[[;\\d]*m", "");
-                            Matcher matcher = powerPattern.matcher(cleanLine);
-                            if (matcher.find()) {
-                                double currentWatts = Double.parseDouble(matcher.group(1));
-                                totalWatts += currentWatts;
-                                readingCount++;
-                            }
-                        }
-                    } catch (Exception e) {
-                        System.err.println("Error reading Joular CLI: " + e.getMessage());
-                    }
-                }).start();
-
+        private long readEnergyUj() {
+            try (BufferedReader reader = new BufferedReader(new java.io.FileReader(RAPL_PATH))) {
+                return Long.parseLong(reader.readLine().trim());
             } catch (Exception e) {
-                System.err.println("Failed to start JoularCore: " + e.getMessage());
+                System.err.println("RAPL Read Error: " + e.getMessage());
+                return 0;
             }
         }
 
+        public void startMonitor(String dummyPath) {
+            startMicroJoules = readEnergyUj();
+            startTimeNano = System.nanoTime(); // FIX: NanoTime
+        }
+
         public double stopAndGetAverage() {
-            isMonitoring = false;
-            if (joularProcess != null) {
-                joularProcess.destroy();
-            }
-            if (readingCount == 0) return 0.0;
-            return totalWatts / readingCount;
+            long endMicroJoules = readEnergyUj();
+            long endTimeNano = System.nanoTime(); // FIX: NanoTime
+
+            if (startMicroJoules == 0 || endMicroJoules == 0) return 0.0;
+
+            // FIX: Convert nanoseconds to seconds precisely
+            double elapsedSeconds = (endTimeNano - startTimeNano) / 1_000_000_000.0;
+
+            // Calculate total Joules (RAPL is in microjoules, so divide by 1,000,000)
+            double totalJoules = (endMicroJoules - startMicroJoules) / 1_000_000.0;
+
+            // Prevent division by zero if it ran too fast
+            if (elapsedSeconds <= 0) return 0.0;
+
+            return totalJoules / elapsedSeconds;
         }
     }
 }
