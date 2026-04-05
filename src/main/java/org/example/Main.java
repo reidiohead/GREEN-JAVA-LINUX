@@ -4,7 +4,11 @@ import javax.swing.*;
 import java.awt.*;
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileWriter;
 import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 public class Main {
 
@@ -76,7 +80,7 @@ public class Main {
                 String currentDir = System.getProperty("user.dir");
 
                 try {
-                    // PHASE 1: STATIC ANALYSIS
+                    // PHASE 1: STATIC ANALYSIS (SonarQube)
                     publish("--------------------------------------------------\n");
                     publish("STREAM A: STATIC STRUCTURAL ANALYSIS\n");
                     publish("--------------------------------------------------\n");
@@ -131,18 +135,15 @@ public class Main {
                         return null;
                     }
 
-                    // --- NEW GREEN JAVA POWER PIPELINE ---
                     PowerMonitor monitor = new PowerMonitor();
 
                     publish("\n2. Initializing Hardware Power Sensors...\n");
+                    publish("[GREEN JAVA] Cooling down CPU (Waiting 20 seconds)...\n");
+                    Thread.sleep(20000);
 
-                    publish("[GREEN JAVA] Cooling down CPU from Maven build (Waiting 5 seconds)...\n");
-                    Thread.sleep(5000);
-
-                    publish("[GREEN JAVA] Gathering 5-second Idle Baseline. Please do not move the mouse...\n");
-
+                    publish("[GREEN JAVA] Gathering 10-second Idle Baseline. Please do not move the mouse...\n");
                     monitor.startMonitor("");
-                    Thread.sleep(5000); // 5 second baseline trap
+                    Thread.sleep(10000);
                     double baselineWatts = monitor.stopAndGetAverage();
                     publish(String.format("[GREEN JAVA] Idle Baseline Established: %.2f W\n\n", baselineWatts));
 
@@ -154,17 +155,12 @@ public class Main {
                     if (isWin) {
                         runCmd.add("cmd.exe");
                         runCmd.add("/c");
-                        String fullCmd = "java -jar target\\benchmarks.jar " +
-                                "-jvmArgs=\"-javaagent:\\\"" + joularJxPath + "\\\"\" " +
-                                "-i 30 -wi 5 -f 1 -r 1s -w 1s -prof jfr";
+                        String fullCmd = "java -jar target\\benchmarks.jar -jvmArgs=\"-javaagent:\\\"" + joularJxPath + "\\\"\" -i 30 -wi 5 -f 1 -r 1s -w 1s -prof jfr";
                         runCmd.add(fullCmd);
                     } else {
                         runCmd.add("sh");
                         runCmd.add("-c");
-                        // THE FIX: The sudo bypass is now inside the -jvmArgs quotes!
-                        String fullCmd = "java -jar target/benchmarks.jar " +
-                                "-jvmArgs=\"-javaagent:" + joularJxPath + " -Djoularjx.sudo=false\" " +
-                                "-i 30 -wi 5 -f 1 -r 1s -w 1s -prof jfr";
+                        String fullCmd = "java -jar target/benchmarks.jar -jvmArgs=\"-javaagent:" + joularJxPath + " -Djoularjx.sudo=false\" -i 30 -wi 5 -f 1 -r 1s -w 1s -prof jfr";
                         runCmd.add(fullCmd);
                     }
 
@@ -193,17 +189,19 @@ public class Main {
                     }
 
                     int exitCode = runProcess.waitFor();
-
                     double activeWatts = monitor.stopAndGetAverage();
 
                     if (exitCode == 0) {
                         publish("\n>>> DYNAMIC PROFILING COMPLETE!\n");
 
                         double netWatts = activeWatts - baselineWatts;
-                        if (netWatts < 0) netWatts = 0;
+                        if (netWatts < 0) netWatts = 0.01; // Minimum floor so we don't get 0
 
                         double jmhTimeSeconds = jmhScoreMs / 1000.0;
                         double finalJoules = netWatts * jmhTimeSeconds;
+
+                        publish("4. Extracting Internal Memory Profiling (JFR)...\n");
+                        double allocatedMemoryMB = JfrParser.extractMemoryAllocation(targetFolder.getAbsolutePath());
 
                         publish("\n==================================================\n");
                         publish("⚡ GREEN JAVA - STREAM B: EMPIRICAL ANALYSIS RESULTS ⚡\n");
@@ -212,9 +210,14 @@ public class Main {
                         publish(String.format("Idle System Noise: -%.2f W\n", baselineWatts));
                         publish(String.format("Net Code Power:     %.2f W\n", netWatts));
                         publish(String.format("Execution Time:     %.4f Seconds\n", jmhTimeSeconds));
+                        publish(String.format("Cumulative Memory:  %.2f MB\n", allocatedMemoryMB));
                         publish("--------------------------------------------------\n");
                         publish(String.format("ENERGY GROUND TRUTH: %.4f Joules/op\n", finalJoules));
                         publish("==================================================\n");
+
+                        // --- NEW CODE: APPEND TO CSV ---
+                        saveToCSV(projectName, jmhTimeSeconds, allocatedMemoryMB, finalJoules);
+                        publish("\n[SUCCESS] Results appended to Data Layer: results.csv\n");
 
                     } else {
                         publish("\n[ERROR] Dynamic profiling execution failed.\n");
@@ -237,11 +240,29 @@ public class Main {
         worker.execute();
     }
 
-    // --- INNER CLASS: NATIVE LINUX RAPL MONITOR ---
+    // --- CSV EXPORTER METHOD ---
+    private static void saveToCSV(String targetName, double executionTime, double memoryMB, double joules) {
+        try {
+            File csvFile = new File(System.getProperty("user.dir"), "results.csv");
+            boolean isNewFile = !csvFile.exists();
+
+            try (PrintWriter out = new PrintWriter(new FileWriter(csvFile, true))) {
+                // Change the CSV Header
+                if (isNewFile) {
+                    out.println("Timestamp,TargetName,ExecutionTime(s),CumulativeMemory(MB),Energy(Joules)");
+                }
+                String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+                out.printf("%s,%s,%.4f,%.2f,%.4f\n", timestamp, targetName, executionTime, memoryMB, joules);
+            }
+        } catch (Exception e) {
+            System.err.println("Failed to write to CSV: " + e.getMessage());
+        }
+    }
+
     public static class PowerMonitor {
         private final String RAPL_PATH = "/sys/class/powercap/intel-rapl:0/energy_uj";
         private long startMicroJoules = 0;
-        private long startTimeNano = 0; // FIX: Changed to Nano for precision
+        private long startTimeNano = 0;
 
         private long readEnergyUj() {
             try (BufferedReader reader = new BufferedReader(new java.io.FileReader(RAPL_PATH))) {
@@ -254,22 +275,16 @@ public class Main {
 
         public void startMonitor(String dummyPath) {
             startMicroJoules = readEnergyUj();
-            startTimeNano = System.nanoTime(); // FIX: NanoTime
+            startTimeNano = System.nanoTime();
         }
 
         public double stopAndGetAverage() {
             long endMicroJoules = readEnergyUj();
-            long endTimeNano = System.nanoTime(); // FIX: NanoTime
+            long endTimeNano = System.nanoTime();
 
             if (startMicroJoules == 0 || endMicroJoules == 0) return 0.0;
-
-            // FIX: Convert nanoseconds to seconds precisely
             double elapsedSeconds = (endTimeNano - startTimeNano) / 1_000_000_000.0;
-
-            // Calculate total Joules (RAPL is in microjoules, so divide by 1,000,000)
             double totalJoules = (endMicroJoules - startMicroJoules) / 1_000_000.0;
-
-            // Prevent division by zero if it ran too fast
             if (elapsedSeconds <= 0) return 0.0;
 
             return totalJoules / elapsedSeconds;
