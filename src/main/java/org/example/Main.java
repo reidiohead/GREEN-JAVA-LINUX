@@ -2,13 +2,13 @@ package org.example;
 
 import javax.swing.*;
 import java.awt.*;
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileWriter;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
+import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.stream.Stream;
 
 public class Main {
 
@@ -116,6 +116,10 @@ public class Main {
                     publish("STREAM B: DYNAMIC EMPIRICAL ANALYSIS\n");
                     publish("--------------------------------------------------\n");
 
+                    // --- THE NEW GREEN JAVA PRE-PROCESSOR HOOK ---
+                    publish("Applying Green Java AST Instrumentation (Injecting bytecode directives)...\n");
+                    instrumentTargetProject(targetFolder, true);
+
                     publish("1. Compiling JMH Executable JAR via Maven...\n");
                     java.util.List<String> mvnCmd = new java.util.ArrayList<>();
                     if (isWin) {
@@ -147,6 +151,9 @@ public class Main {
                     double baselineWatts = monitor.stopAndGetAverage();
                     publish(String.format("[GREEN JAVA] Idle Baseline Established: %.2f W\n\n", baselineWatts));
 
+
+                    publish("Sweeping lab environment (Deleting old JFR/Joular files)...\n");
+                    cleanOldJfrFolders(targetFolder);
                     publish("3. Launching JMH Treadmill...\n");
 
                     String joularJxPath = currentDir + (isWin ? "\\tools\\joularjx-3.1.0.jar" : "/tools/joularjx-3.1.0.jar");
@@ -195,7 +202,7 @@ public class Main {
                         publish("\n>>> DYNAMIC PROFILING COMPLETE!\n");
 
                         double netWatts = activeWatts - baselineWatts;
-                        if (netWatts < 0) netWatts = 0.01; // Minimum floor so we don't get 0
+                        if (netWatts < 0) netWatts = 0.01;
 
                         double jmhTimeSeconds = jmhScoreMs / 1000.0;
                         double finalJoules = netWatts * jmhTimeSeconds;
@@ -204,7 +211,7 @@ public class Main {
                         double allocatedMemoryMB = JfrParser.extractMemoryAllocation(targetFolder.getAbsolutePath());
 
                         publish("\n==================================================\n");
-                        publish("⚡ GREEN JAVA - STREAM B: EMPIRICAL ANALYSIS RESULTS ⚡\n");
+                        publish(" GREEN JAVA - STREAM B: EMPIRICAL ANALYSIS RESULTS \n");
                         publish("==================================================\n");
                         publish(String.format("Gross Active Power: %.2f W\n", activeWatts));
                         publish(String.format("Idle System Noise: -%.2f W\n", baselineWatts));
@@ -215,7 +222,6 @@ public class Main {
                         publish(String.format("ENERGY GROUND TRUTH: %.4f Joules/op\n", finalJoules));
                         publish("==================================================\n");
 
-                        // --- NEW CODE: APPEND TO CSV ---
                         saveToCSV(projectName, jmhTimeSeconds, allocatedMemoryMB, finalJoules);
                         publish("\n[SUCCESS] Results appended to Data Layer: results.csv\n");
 
@@ -225,6 +231,14 @@ public class Main {
 
                 } catch (Exception ex) {
                     publish("\n[SYSTEM ERROR] " + ex.getMessage() + "\n");
+                } finally {
+                    // --- CLEANUP HOOK: Remove the injected bytecode so the user's project stays clean ---
+                    try {
+                        instrumentTargetProject(targetFolder, false);
+                        publish("[GREEN JAVA] Successfully cleaned up AST instrumentation.\n");
+                    } catch (Exception e) {
+                        publish("[WARNING] Failed to clean up instrumentation: " + e.getMessage() + "\n");
+                    }
                 }
                 return null;
             }
@@ -240,6 +254,43 @@ public class Main {
         worker.execute();
     }
 
+    // ==========================================
+    // THE GREEN JAVA META-PROGRAMMING ENGINE
+    // ==========================================
+    private static void instrumentTargetProject(File targetFolder, boolean inject) throws Exception {
+        try (Stream<Path> paths = Files.walk(targetFolder.toPath())) {
+            paths.filter(Files::isRegularFile)
+                    .filter(p -> p.toString().endsWith(".java"))
+                    .forEach(path -> {
+                        try {
+                            java.util.List<String> lines = Files.readAllLines(path);
+                            java.util.List<String> newLines = new ArrayList<>();
+                            boolean modified = false;
+
+                            for (String line : lines) {
+                                if (!inject && line.contains("// INJECTED BY GREEN JAVA ORCHESTRATOR")) {
+                                    modified = true;
+                                    continue; // Skip this line to remove it
+                                }
+                                newLines.add(line);
+
+                                // If we find our custom annotation, inject the JMH bytecode builder beneath it
+                                if (inject && line.trim().startsWith("@GreenBenchmark")) {
+                                    newLines.add("    @org.openjdk.jmh.annotations.Benchmark // INJECTED BY GREEN JAVA ORCHESTRATOR");
+                                    modified = true;
+                                }
+                            }
+
+                            if (modified) {
+                                Files.write(path, newLines);
+                            }
+                        } catch (IOException e) {
+                            System.err.println("Instrumentation error on " + path + ": " + e.getMessage());
+                        }
+                    });
+        }
+    }
+
     // --- CSV EXPORTER METHOD ---
     private static void saveToCSV(String targetName, double executionTime, double memoryMB, double joules) {
         try {
@@ -247,7 +298,6 @@ public class Main {
             boolean isNewFile = !csvFile.exists();
 
             try (PrintWriter out = new PrintWriter(new FileWriter(csvFile, true))) {
-                // Change the CSV Header
                 if (isNewFile) {
                     out.println("Timestamp,TargetName,ExecutionTime(s),CumulativeMemory(MB),Energy(Joules)");
                 }
@@ -289,5 +339,26 @@ public class Main {
 
             return totalJoules / elapsedSeconds;
         }
+    }
+
+    // --- AUTOMATED LAB CLEANUP METHOD ---
+    private static void cleanOldJfrFolders(File directory) {
+        File[] files = directory.listFiles();
+        if (files != null) {
+            for (File file : files) {
+                if (file.isDirectory() && (file.getName().endsWith("-AverageTime") || file.getName().equals("joularjx-result"))) {
+                    deleteRecursively(file);
+                }
+            }
+        }
+    }
+
+    private static void deleteRecursively(File file) {
+        if (file.isDirectory()) {
+            for (File child : file.listFiles()) {
+                deleteRecursively(child);
+            }
+        }
+        file.delete();
     }
 }
