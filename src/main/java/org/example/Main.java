@@ -24,7 +24,7 @@ public class Main {
         // --- 1. MODERN FRAME SETUP ---
         JFrame frame = new JFrame("Green Java - Hybrid Analysis Orchestrator");
         frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
-        frame.setSize(1000, 800);
+        frame.setSize(1100, 800);
         frame.setLocationRelativeTo(null);
         frame.getContentPane().setBackground(new Color(40, 42, 54)); // Dracula Dark Theme
 
@@ -47,9 +47,12 @@ public class Main {
         consolePane.setBackground(new Color(30, 30, 30)); // Deep terminal black
         consolePane.setFont(new Font("Monospaced", Font.BOLD, 14));
 
-        // Wrap it in a scroll pane with a nice border
         JScrollPane scrollPane = new JScrollPane(consolePane);
         scrollPane.setBorder(BorderFactory.createLineBorder(new Color(98, 114, 164), 2));
+
+        // INJECT LOGO ON BOOT
+        appendColoredText(consolePane, GreenJavaLogo.getBootSequence(), new Color(80, 250, 123)); // Neon Green
+        logToConsole(consolePane, "System Initialized. Awaiting target project selection...\n\n");
 
         browseBtn.addActionListener(e -> {
             JFileChooser fileChooser = new JFileChooser();
@@ -69,24 +72,38 @@ public class Main {
         topPanel.add(pathLabel);
 
         // --- 4. BOTTOM PANEL (ACTION BUTTONS) ---
-        JPanel bottomPanel = new JPanel(new GridLayout(1, 2, 10, 0));
+        JPanel bottomPanel = new JPanel(new GridLayout(1, 4, 10, 0));
         bottomPanel.setBackground(new Color(40, 42, 54));
         bottomPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
-        JButton runHybridBtn = new JButton("1. Run Full Hybrid Analysis");
-        runHybridBtn.setFont(new Font("SansSerif", Font.BOLD, 15));
+        JButton runHybridBtn = new JButton("1. Run Hybrid Analysis");
+        runHybridBtn.setFont(new Font("SansSerif", Font.BOLD, 13));
         runHybridBtn.setBackground(new Color(80, 250, 123)); // Neon Green
         runHybridBtn.setForeground(new Color(30, 30, 30));
         runHybridBtn.setFocusPainted(false);
 
         JButton runEisBtn = new JButton("2. Recalculate EIS Data");
-        runEisBtn.setFont(new Font("SansSerif", Font.BOLD, 15));
+        runEisBtn.setFont(new Font("SansSerif", Font.BOLD, 13));
         runEisBtn.setBackground(new Color(139, 233, 253)); // Cyan
         runEisBtn.setForeground(new Color(30, 30, 30));
         runEisBtn.setFocusPainted(false);
 
+        JButton viewResultsBtn = new JButton("3. 📂 View CSV");
+        viewResultsBtn.setFont(new Font("SansSerif", Font.BOLD, 13));
+        viewResultsBtn.setBackground(new Color(255, 184, 108)); // Dracula Orange
+        viewResultsBtn.setForeground(new Color(30, 30, 30));
+        viewResultsBtn.setFocusPainted(false);
+
+        JButton viewLogsBtn = new JButton("4. 📜 View Logs");
+        viewLogsBtn.setFont(new Font("SansSerif", Font.BOLD, 13));
+        viewLogsBtn.setBackground(new Color(189, 147, 249)); // Purple
+        viewLogsBtn.setForeground(new Color(30, 30, 30));
+        viewLogsBtn.setFocusPainted(false);
+
         bottomPanel.add(runHybridBtn);
         bottomPanel.add(runEisBtn);
+        bottomPanel.add(viewResultsBtn);
+        bottomPanel.add(viewLogsBtn);
 
         // --- 5. BUTTON ACTIONS ---
         runHybridBtn.addActionListener(e -> {
@@ -106,6 +123,18 @@ public class Main {
             logToConsole(consolePane, calculateAndGetEISReport());
         });
 
+        viewResultsBtn.addActionListener(e -> {
+            File resultsDir = new File(System.getProperty("user.dir"), "results");
+            if (!resultsDir.exists()) resultsDir.mkdirs();
+            openDirectory(frame, resultsDir);
+        });
+
+        viewLogsBtn.addActionListener(e -> {
+            File logsDir = new File(System.getProperty("user.dir") + File.separator + "results" + File.separator + "logs");
+            if (!logsDir.exists()) logsDir.mkdirs();
+            openDirectory(frame, logsDir);
+        });
+
         frame.getContentPane().add(BorderLayout.NORTH, topPanel);
         frame.getContentPane().add(BorderLayout.CENTER, scrollPane);
         frame.getContentPane().add(BorderLayout.SOUTH, bottomPanel);
@@ -113,31 +142,37 @@ public class Main {
         frame.setVisible(true);
     }
 
+    private static void openDirectory(JFrame frame, File dir) {
+        try {
+            if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.OPEN)) {
+                Desktop.getDesktop().open(dir);
+            } else {
+                Runtime.getRuntime().exec("xdg-open " + dir.getAbsolutePath());
+            }
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(frame, "Failed to open directory. Error: " + ex.getMessage(), "Directory Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
     // ===================================================================================
-    // THE SMART COLOR LOGGER (Parses text and applies colors dynamically)
+    // THE SMART COLOR LOGGER
     // ===================================================================================
     private static void logToConsole(JTextPane pane, String textBlock) {
         if (textBlock == null) return;
-
-        // Split the block into individual lines, preserving the newline character
         String[] lines = textBlock.split("(?<=\n)");
-
         for (String line : lines) {
-            Color c = new Color(248, 248, 242); // Default Dracula White
-
-            // Keyword Color Routing
+            Color c = new Color(248, 248, 242);
             if (line.contains("[RED]") || line.contains("ERROR") || line.contains("CRITICAL")) {
-                c = new Color(255, 85, 85); // Bright Red
+                c = new Color(255, 85, 85);
             } else if (line.contains("[YELLOW]") || line.contains("WARNING") || line.contains("YELLOW")) {
-                c = new Color(241, 250, 140); // Bright Yellow
+                c = new Color(241, 250, 140);
             } else if (line.contains("[GREEN]") || line.contains("SUCCESS") || line.contains("GREEN")) {
-                c = new Color(80, 250, 123); // Neon Green
+                c = new Color(80, 250, 123);
             } else if (line.contains("===") || line.contains("---")) {
-                c = new Color(98, 114, 164); // Muted Blue for headers
+                c = new Color(98, 114, 164);
             } else if (line.contains("GREEN JAVA")) {
-                c = new Color(189, 147, 249); // Purple branding
+                c = new Color(189, 147, 249);
             }
-
             appendColoredText(pane, line, c);
         }
     }
@@ -148,13 +183,12 @@ public class Main {
         StyleConstants.setForeground(style, color);
         try {
             doc.insertString(doc.getLength(), text, style);
-            pane.setCaretPosition(doc.getLength()); // Auto-scroll to bottom
+            pane.setCaretPosition(doc.getLength());
         } catch (BadLocationException e) {
             e.printStackTrace();
         }
     }
 
-    // --- CONFIGURATION LOADER ---
     private static Properties loadConfig() {
         Properties prop = new Properties();
         File configFile = new File(System.getProperty("user.dir") + File.separator + "tools" + File.separator + "config.properties");
@@ -168,22 +202,28 @@ public class Main {
 
     private static void runHybridAnalysis(JTextPane consolePane, File targetFolder) {
         SwingWorker<Void, String> worker = new SwingWorker<>() {
+            StringBuilder sessionLog = new StringBuilder();
+            String benchmarkMethod = "Unknown_Method";
+
+            private void publishLog(String msg) {
+                sessionLog.append(msg);
+                publish(msg);
+            }
+
             @Override
             protected Void doInBackground() {
                 String os = System.getProperty("os.name").toLowerCase();
                 boolean isWin = os.contains("win");
                 String currentDir = System.getProperty("user.dir");
-
                 Properties config = loadConfig();
 
                 try {
-                    publish("--------------------------------------------------\n");
-                    publish("STREAM A: STATIC STRUCTURAL ANALYSIS\n");
-                    publish("--------------------------------------------------\n");
+                    publishLog("--------------------------------------------------\n");
+                    publishLog("STREAM A: STATIC STRUCTURAL ANALYSIS\n");
+                    publishLog("--------------------------------------------------\n");
 
                     String projectName = targetFolder.getName().replaceAll("[^a-zA-Z0-9_.-]", "_");
                     String dynamicProjectKey = "greenjava_" + projectName;
-
                     String sqToken = config.getProperty("sonar.token", "YOUR_TOKEN_HERE");
                     String sqUrl = config.getProperty("sonar.host.url", "http://localhost:9000");
 
@@ -206,17 +246,17 @@ public class Main {
                     Process sonarProcess = sonarPb.start();
                     BufferedReader sonarReader = new BufferedReader(new InputStreamReader(sonarProcess.getInputStream()));
                     String line;
-                    while ((line = sonarReader.readLine()) != null) { publish(line + "\n"); }
+                    while ((line = sonarReader.readLine()) != null) { publishLog(line + "\n"); }
                     sonarProcess.waitFor();
 
-                    publish("--------------------------------------------------\n");
-                    publish("STREAM B: DYNAMIC EMPIRICAL ANALYSIS\n");
-                    publish("--------------------------------------------------\n");
+                    publishLog("--------------------------------------------------\n");
+                    publishLog("STREAM B: DYNAMIC EMPIRICAL ANALYSIS\n");
+                    publishLog("--------------------------------------------------\n");
 
-                    publish("Applying Green Java AST Instrumentation...\n");
+                    publishLog("Applying Green Java AST Instrumentation...\n");
                     instrumentTargetProject(targetFolder, true);
 
-                    publish("1. Compiling JMH Executable JAR via Maven...\n");
+                    publishLog("1. Compiling JMH Executable JAR via Maven...\n");
                     java.util.List<String> mvnCmd = new java.util.ArrayList<>();
                     if (isWin) {
                         mvnCmd.add("cmd.exe"); mvnCmd.add("/c"); mvnCmd.add("mvn clean package -DskipTests");
@@ -228,128 +268,159 @@ public class Main {
                     mvnPb.redirectErrorStream(true);
                     Process mvnProcess = mvnPb.start();
                     BufferedReader mvnReader = new BufferedReader(new InputStreamReader(mvnProcess.getInputStream()));
-                    while ((line = mvnReader.readLine()) != null) { publish(line + "\n"); }
+                    while ((line = mvnReader.readLine()) != null) { publishLog(line + "\n"); }
 
                     if (mvnProcess.waitFor() != 0) {
-                        publish("\n[CRITICAL ERROR] Maven build failed.\n");
+                        publishLog("\n[CRITICAL ERROR] Maven build failed.\n");
                         return null;
                     }
 
                     PowerMonitor monitor = new PowerMonitor();
-                    publish("\n2. Initializing Hardware Power Sensors...\n");
-                    publish("[GREEN JAVA] Cooling down CPU (Waiting 20 seconds)...\n");
+                    publishLog("\n2. Initializing Hardware Power Sensors...\n");
+                    publishLog("[GREEN JAVA] Cooling down CPU (Waiting 20 seconds)...\n");
                     Thread.sleep(20000);
 
-                    publish("[GREEN JAVA] Gathering 10-second Idle Baseline...\n");
+                    publishLog("[GREEN JAVA] Gathering 10-second Idle Baseline...\n");
                     monitor.startMonitor();
                     Thread.sleep(10000);
                     double baselineWatts = monitor.stopAndGetAverage();
-                    publish(String.format("[GREEN JAVA] Idle Baseline Established: %.2f W\n\n", baselineWatts));
+                    publishLog(String.format("[GREEN JAVA] Idle Baseline Established: %.2f W\n\n", baselineWatts));
 
-                    publish("Sweeping lab environment...\n");
+                    publishLog("Sweeping lab environment...\n");
                     cleanOldJfrFolders(targetFolder);
-                    publish("3. Launching JMH Treadmill...\n");
+                    publishLog("3. Launching JMH Treadmill...\n");
 
                     String joularJxPath = currentDir + (isWin ? "\\tools\\joularjx-3.1.0.jar" : "/tools/joularjx-3.1.0.jar");
                     java.util.List<String> runCmd = new java.util.ArrayList<>();
 
                     if (isWin) {
                         runCmd.add("cmd.exe"); runCmd.add("/c");
-                        runCmd.add("java -jar target\\benchmarks.jar -jvmArgs=\"-javaagent:\\\"" + joularJxPath + "\\\"\" -i 30 -wi 10 -f 1 -r 1s -w 1s -prof jfr");
+                        runCmd.add("java -jar target\\benchmarks.jar -jvmArgs=\"-javaagent:\\\"" + joularJxPath + "\\\"\" -r 1s -w 1s -prof jfr");
                     } else {
                         runCmd.add("sh"); runCmd.add("-c");
-                        runCmd.add("java -jar target/benchmarks.jar -jvmArgs=\"-javaagent:" + joularJxPath + " -Djoularjx.sudo=false\" -i 30 -wi 10 -f 1 -r 1s -w 1s -prof jfr");
+                        runCmd.add("java -jar target/benchmarks.jar -jvmArgs=\"-javaagent:" + joularJxPath + " -Djoularjx.sudo=false\" -r 1s -w 1s -prof jfr");
                     }
 
                     monitor.startMonitor();
+                    long jmhStartNano = System.nanoTime();
+
                     ProcessBuilder runPb = new ProcessBuilder(runCmd);
                     runPb.directory(targetFolder);
                     runPb.redirectErrorStream(true);
                     Process runProcess = runPb.start();
 
                     BufferedReader runReader = new BufferedReader(new InputStreamReader(runProcess.getInputStream()));
+
                     double jmhScoreMs = 0.0;
-                    String benchmarkMethod = "Unknown_Method";
 
                     while ((line = runReader.readLine()) != null) {
-                        publish(line + "\n");
+                        publishLog(line + "\n");
                         if (line.contains("avgt") && line.contains("ms/op") && !line.contains(":jfr")) {
                             String[] parts = line.trim().split("\\s+");
                             if (parts.length > 0) benchmarkMethod = parts[0];
 
-                            // ========================================================
-                            // EXACT COLUMN PARSER (Targets 'Score', ignores 'Cnt')
-                            // Format: [0:Benchmark] [1:Mode] [2:Cnt] [3:Score] [4:Error] [5:Units]
-                            // ========================================================
-                            if (parts.length >= 4) {
-                                String scoreStr = parts[3];
-                                if (scoreStr.equals("≈")) {
-                                    jmhScoreMs = 0.000001; // Assign microscopic time for nanosecond ops
+                            if (parts.length >= 5) {
+                                String candidatePrimary   = parts[4];
+                                String candidateFallback  = parts[3];
+                                String scoreStr = isNumeric(candidatePrimary) ? candidatePrimary : candidateFallback;
+
+                                if (scoreStr.equals("\u2248")) {
+                                    jmhScoreMs = 0.000001;
                                 } else {
-                                    try {
-                                        jmhScoreMs = Double.parseDouble(scoreStr);
-                                    } catch (Exception e) {
-                                        jmhScoreMs = 0.000001; // Fallback
-                                    }
+                                    try { jmhScoreMs = Double.parseDouble(scoreStr); }
+                                    catch (Exception e) { jmhScoreMs = 0.000001; }
+                                }
+                            } else if (parts.length >= 4) {
+                                String scoreStr = parts[3];
+                                if (scoreStr.equals("\u2248")) {
+                                    jmhScoreMs = 0.000001;
+                                } else {
+                                    try { jmhScoreMs = Double.parseDouble(scoreStr); }
+                                    catch (Exception e) { jmhScoreMs = 0.000001; }
                                 }
                             }
                         }
                     }
 
                     int exitCode = runProcess.waitFor();
+                    long jmhEndNano = System.nanoTime();
+                    double jmhElapsedSeconds = (jmhEndNano - jmhStartNano) / 1_000_000_000.0;
+
                     double activeWatts = monitor.stopAndGetAverage();
 
                     if (exitCode == 0) {
-                        publish("\n>>> DYNAMIC PROFILING COMPLETE!\n");
+                        publishLog("\n>>> DYNAMIC PROFILING COMPLETE!\n");
 
                         double netWatts = activeWatts - baselineWatts;
                         if (netWatts < 0) netWatts = 0.01;
-                        double jmhTimeSeconds = jmhScoreMs / 1000.0;
-                        double finalJoules = netWatts * jmhTimeSeconds;
+
+                        // =========================================================
+                        // FIX 1: MATHEMATICAL PHYSICS FIX
+                        // We use the Score (execution time per operation) to
+                        // find the Joules required for one algorithmic run.
+                        // =========================================================
+                        double jmhScoreSeconds = jmhScoreMs / 1000.0;
+                        double finalJoules = netWatts * jmhScoreSeconds; // <-- RESTORED AND FIXED!
 
                         double allocatedMemoryMB = 0.0;
                         try {
                             allocatedMemoryMB = JfrParser.extractMemoryAllocation(targetFolder.getAbsolutePath());
                         } catch (Exception e) {
-                            publish("[WARNING] JFR Parsing issue: " + e.getMessage() + "\n");
+                            publishLog("[WARNING] JFR Parsing issue: " + e.getMessage() + "\n");
                         }
 
                         String extractedSmell = extractSmellNameFromSource(targetFolder, benchmarkMethod);
 
-                        publish("\n==================================================\n");
-                        publish(" GREEN JAVA - STREAM B: EMPIRICAL ANALYSIS RESULTS \n");
-                        publish("==================================================\n");
-                        publish(String.format("Target Smell:       %s\n", extractedSmell));
-                        publish(String.format("Target Method:      %s\n", benchmarkMethod));
-                        publish(String.format("Gross Active Power: %.2f W\n", activeWatts));
-                        publish(String.format("Idle System Noise:  %.2f W\n", baselineWatts));
-                        publish(String.format("Net Code Power:     %.2f W\n", netWatts));
-                        publish("--------------------------------------------------\n");
-                        publish(String.format("Execution Time:     %.6f Seconds\n", jmhTimeSeconds));
-                        publish(String.format("Cumulative Memory:  %.2f MB\n", allocatedMemoryMB));
-                        publish("--------------------------------------------------\n");
-                        publish(String.format("ENERGY GROUND TRUTH: %.6f Joules/op\n", finalJoules));
-                        publish("==================================================\n");
+                        publishLog("\n==================================================\n");
+                        publishLog(" GREEN JAVA - STREAM B: EMPIRICAL ANALYSIS RESULTS \n");
+                        publishLog("==================================================\n");
+                        publishLog(String.format("Target Smell:        %s\n", extractedSmell));
+                        publishLog(String.format("Target Method:       %s\n", benchmarkMethod));
+                        publishLog(String.format("Gross Active Power: %.2f W\n", activeWatts));
+                        publishLog(String.format("Idle System Noise:  %.2f W\n", baselineWatts));
+                        publishLog(String.format("Net Code Power:     %.2f W\n", netWatts));
+                        publishLog("--------------------------------------------------\n");
+                        publishLog(String.format("Avg Execution Time: %.6f s/op\n", jmhScoreSeconds));
+                        publishLog(String.format("JMH Run Duration:   %.2f s (wall-clock)\n", jmhElapsedSeconds));
+                        publishLog(String.format("Cumulative Memory:  %.2f MB\n", allocatedMemoryMB));
+                        publishLog("--------------------------------------------------\n");
+                        publishLog(String.format("ENERGY GROUND TRUTH: %.6f Joules/op\n", finalJoules));
+                        publishLog("==================================================\n");
 
-                        saveToCSV(projectName, extractedSmell, benchmarkMethod, jmhTimeSeconds, allocatedMemoryMB, finalJoules);
-                        publish("[SUCCESS] Results appended to Data Layer: results.csv\n");
+                        saveToCSV(projectName, extractedSmell, benchmarkMethod, jmhScoreSeconds, allocatedMemoryMB, finalJoules);
+                        publishLog("[SUCCESS] Results appended to Data Layer: results/results.csv\n");
 
-                        publish("\n--------------------------------------------------\n");
-                        publish("AUTO-TRIGGERING SCORING SERVICE (DATA LAYER)\n");
-                        publish("--------------------------------------------------\n");
-                        publish(calculateAndGetEISReport());
+                        publishLog("\n--------------------------------------------------\n");
+                        publishLog("AUTO-TRIGGERING SCORING SERVICE (DATA LAYER)\n");
+                        publishLog("--------------------------------------------------\n");
+                        publishLog(calculateAndGetEISReport());
 
                     } else {
-                        publish("\n[ERROR] Dynamic profiling execution failed.\n");
+                        publishLog("\n[ERROR] Dynamic profiling execution failed.\n");
                     }
                 } catch (Exception ex) {
-                    publish("\n[CRITICAL ERROR] " + ex.getMessage() + "\n");
+                    publishLog("\n[CRITICAL ERROR] " + ex.getMessage() + "\n");
                 } finally {
                     try {
                         instrumentTargetProject(targetFolder, false);
-                        publish("[GREEN JAVA] Successfully cleaned up AST instrumentation.\n");
+                        publishLog("[GREEN JAVA] Successfully cleaned up AST instrumentation.\n");
                     } catch (Exception e) {
-                        publish("[WARNING] Cleanup failed: " + e.getMessage() + "\n");
+                        publishLog("[WARNING] Cleanup failed: " + e.getMessage() + "\n");
+                    }
+
+                    // --- 6. SAVE SESSION LOG TO TEXT FILE ---
+                    try {
+                        File logsDir = new File(System.getProperty("user.dir") + File.separator + "results" + File.separator + "logs");
+                        if (!logsDir.exists()) logsDir.mkdirs();
+
+                        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
+                        String sanitizedMethodName = benchmarkMethod.replaceAll("[^a-zA-Z0-9_-]", "");
+                        String logFileName = sanitizedMethodName + "_" + timestamp + ".txt";
+
+                        File logFile = new File(logsDir, logFileName);
+                        Files.writeString(logFile.toPath(), sessionLog.toString());
+                    } catch (IOException e) {
+                        System.err.println("Could not save session log: " + e.getMessage());
                     }
                 }
                 return null;
@@ -363,6 +434,12 @@ public class Main {
             }
         };
         worker.execute();
+    }
+
+    private static boolean isNumeric(String s) {
+        if (s == null || s.isEmpty()) return false;
+        try { Double.parseDouble(s); return true; }
+        catch (NumberFormatException e) { return false; }
     }
 
     private static String extractSmellNameFromSource(File targetFolder, String fullMethodName) {
@@ -397,9 +474,11 @@ public class Main {
 
     private static String calculateAndGetEISReport() {
         StringBuilder sb = new StringBuilder();
-        File csvFile = new File(System.getProperty("user.dir"), "results.csv");
+        File resultsDir = new File(System.getProperty("user.dir"), "results");
+        if (!resultsDir.exists()) resultsDir.mkdirs();
+        File csvFile = new File(resultsDir, "results.csv");
 
-        if (!csvFile.exists()) return "[ERROR] No results.csv found.\n";
+        if (!csvFile.exists()) return "[ERROR] No results/results.csv found.\n";
 
         try {
             List<String> lines = Files.readAllLines(csvFile.toPath());
@@ -420,10 +499,15 @@ public class Main {
                 energies.add(Double.parseDouble(parts[6]));
             }
 
-            double minTime = times.stream().min(Double::compare).orElse(0.0);
-            double maxTime = times.stream().max(Double::compare).orElse(1.0);
-            double minMem = memories.stream().min(Double::compare).orElse(0.0);
-            double maxMem = memories.stream().max(Double::compare).orElse(1.0);
+            // =========================================================================
+            // FIX 2: GLOBAL HARDWARE CALIBRATION LIMITS
+            // Hardcoded from Phase 1. Prevents the Min-Max denominator from shifting.
+            // =========================================================================
+            final double GLOBAL_MIN_TIME = 0.0;
+            final double GLOBAL_MAX_TIME = 0.750; // Locked to Bubble Sort ceiling
+
+            final double GLOBAL_MIN_MEM = 0.0;
+            final double GLOBAL_MAX_MEM = 25000.0; // Locked to Merge Sort ceiling
 
             sb.append("2. Calculating Spearman Rank Correlation Weights...\n");
             double[] timeArr = times.stream().mapToDouble(d -> d).toArray();
@@ -442,9 +526,9 @@ public class Main {
 
             sb.append(String.format("   -> Time Weight: %.2f%%\n", weightTime * 100));
             sb.append(String.format("   -> Memory Weight: %.2f%%\n", weightMem * 100));
-            sb.append("3. Applying Min-Max Normalization & Weighted Sum Model...\n");
+            sb.append("3. Applying Min-Max Normalization (Anchored to Global Ceilings)...\n");
 
-            File reportFile = new File(System.getProperty("user.dir"), "eis_report.csv");
+            File reportFile = new File(resultsDir, "eis_report.csv");
             Map<String, double[]> smellAggregator = new HashMap<>();
 
             try (PrintWriter out = new PrintWriter(new FileWriter(reportFile))) {
@@ -456,8 +540,15 @@ public class Main {
                     double rawTime = Double.parseDouble(row[4]);
                     double rawMem = Double.parseDouble(row[5]);
 
-                    double normTime = (maxTime == minTime) ? 0 : (rawTime - minTime) / (maxTime - minTime);
-                    double normMem = (maxMem == minMem) ? 0 : (rawMem - minMem) / (maxMem - minMem);
+                    // FIX APPLIED: Normalizing against absolute physical limits
+                    double normTime = (rawTime - GLOBAL_MIN_TIME) / (GLOBAL_MAX_TIME - GLOBAL_MIN_TIME);
+                    double normMem = (rawMem - GLOBAL_MIN_MEM) / (GLOBAL_MAX_MEM - GLOBAL_MIN_MEM);
+
+                    // Safety cap to prevent scores over 100 or below 0
+                    if (normTime > 1.0) normTime = 1.0;
+                    if (normMem > 1.0) normMem = 1.0;
+                    if (normTime < 0.0) normTime = 0.0;
+                    if (normMem < 0.0) normMem = 0.0;
 
                     double finalEIS = ((normTime * weightTime) + (normMem * weightMem)) * 100.0;
 
@@ -512,7 +603,6 @@ public class Main {
                     boolean modified = false;
 
                     for (String line : lines) {
-                        // 1. Remove previously injected code during cleanup
                         if (!inject && line.contains("// INJECTED BY GREEN JAVA ORCHESTRATOR")) {
                             modified = true;
                             continue;
@@ -520,20 +610,15 @@ public class Main {
 
                         newLines.add(line);
 
-                        // 2. Translate @GreenBenchmark into JMH Annotations
                         if (inject && line.trim().startsWith("@GreenBenchmark")) {
-
-                            // Parse the custom API parameters, falling back to your defined defaults
                             int warmups = extractIntParameter(line, "warmupIterations", 10);
                             int measurements = extractIntParameter(line, "measurementIterations", 30);
+                            int forks = extractIntParameter(line, "forks", 1);
 
-                            // Inject the core Benchmark tag
                             newLines.add("    @org.openjdk.jmh.annotations.Benchmark // INJECTED BY GREEN JAVA ORCHESTRATOR");
-
-                            // Dynamically inject the precise parameters the developer requested in your API
                             newLines.add("    @org.openjdk.jmh.annotations.Warmup(iterations = " + warmups + ", time = 1, timeUnit = java.util.concurrent.TimeUnit.SECONDS) // INJECTED BY GREEN JAVA ORCHESTRATOR");
                             newLines.add("    @org.openjdk.jmh.annotations.Measurement(iterations = " + measurements + ", time = 1, timeUnit = java.util.concurrent.TimeUnit.SECONDS) // INJECTED BY GREEN JAVA ORCHESTRATOR");
-
+                            newLines.add("    @org.openjdk.jmh.annotations.Fork(value = " + forks + ") // INJECTED BY GREEN JAVA ORCHESTRATOR");
                             modified = true;
                         }
                     }
@@ -545,7 +630,6 @@ public class Main {
         }
     }
 
-    // Helper method to parse integer parameters out of the @GreenBenchmark annotation string
     private static int extractIntParameter(String line, String paramName, int defaultValue) {
         if (!line.contains(paramName)) return defaultValue;
         try {
@@ -553,7 +637,6 @@ public class Main {
             int equalsIndex = line.indexOf("=", startIndex);
             if (equalsIndex == -1) return defaultValue;
 
-            // Extract the string until the next comma or closing parenthesis
             int commaIndex = line.indexOf(",", equalsIndex);
             int parenIndex = line.indexOf(")", equalsIndex);
             int endIndex = (commaIndex != -1 && commaIndex < parenIndex) ? commaIndex : parenIndex;
@@ -569,7 +652,10 @@ public class Main {
 
     private static void saveToCSV(String projectName, String targetSmell, String methodName, double executionTime, double memoryMB, double joules) {
         try {
-            File csvFile = new File(System.getProperty("user.dir"), "results.csv");
+            File resultsDir = new File(System.getProperty("user.dir"), "results");
+            if (!resultsDir.exists()) resultsDir.mkdirs();
+
+            File csvFile = new File(resultsDir, "results.csv");
             boolean isNewFile = !csvFile.exists();
             try (PrintWriter out = new PrintWriter(new FileWriter(csvFile, true))) {
                 if (isNewFile) {
