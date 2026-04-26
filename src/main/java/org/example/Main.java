@@ -444,6 +444,10 @@ public class Main {
                     if (exitCode == 0 && !isCancelled()) {
                         publishLog("\n>>> DYNAMIC PROFILING COMPLETE!\n");
 
+                        // [INJECTED FIX] Give Linux OS and JFR time to flush the profile.jfr file to disk
+                        publishLog("[GREEN JAVA] Waiting 3 seconds for JFR disk flush...\n");
+                        Thread.sleep(3000);
+
                         double netWatts = activeWatts - baselineWatts;
                         if (netWatts < 0) netWatts = 0.01;
 
@@ -456,6 +460,7 @@ public class Main {
                         } catch (Exception e) {
                             publishLog("[WARNING] JFR Parsing issue: " + e.getMessage() + "\n");
                         }
+
 
                         String extractedSmell = extractSmellNameFromSource(targetFolder, benchmarkMethod);
 
@@ -603,11 +608,9 @@ public class Main {
                 energies.add(Double.parseDouble(parts[6]));
             }
 
-            final double GLOBAL_MIN_TIME = 0.0;
-            final double GLOBAL_MAX_TIME = 0.750;
-
-            final double GLOBAL_MIN_MEM = 0.0;
-            final double GLOBAL_MAX_MEM = 25000.0;
+// 1. Set Absolute Hardware Ceilings (From your Phase 1 CSV Data)
+            final double CEILING_TIME = 0.743411;    // Validation_O(N2)_BubbleSort
+            final double CEILING_MEMORY = 67000;  // Hardware_Ceiling_MemoryAllocation
 
             sb.append("2. Calculating Spearman Rank Correlation Weights...\n");
             double[] timeArr = times.stream().mapToDouble(d -> d).toArray();
@@ -640,14 +643,17 @@ public class Main {
                     double rawTime = Double.parseDouble(row[4]);
                     double rawMem = Double.parseDouble(row[5]);
 
-                    double normTime = (rawTime - GLOBAL_MIN_TIME) / (GLOBAL_MAX_TIME - GLOBAL_MIN_TIME);
-                    double normMem = (rawMem - GLOBAL_MIN_MEM) / (GLOBAL_MAX_MEM - GLOBAL_MIN_MEM);
+                    // 2. INDEPENDENT NORMALIZATION (The Math Fix)
+                    double normTime = rawTime / CEILING_TIME;
+                    double normMem = rawMem / CEILING_MEMORY;
 
+                    // Cap the maximum at 1.0 (100%) just in case a wild test exceeds BubbleSort
                     if (normTime > 1.0) normTime = 1.0;
                     if (normMem > 1.0) normMem = 1.0;
                     if (normTime < 0.0) normTime = 0.0;
                     if (normMem < 0.0) normMem = 0.0;
 
+                    // 3. The 2-Component WSM (Already perfectly written by you!)
                     double finalEIS = ((normTime * weightTime) + (normMem * weightMem)) * 100.0;
 
                     String category = "GREEN";
