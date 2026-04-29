@@ -28,17 +28,20 @@ public class Main {
         // --- 1. MODERN FRAME SETUP ---
         JFrame frame = new JFrame("Green Java - Hybrid Analysis Orchestrator");
         frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
-        frame.setSize(1150, 800); // Widened slightly for the new controls
+        frame.setSize(1150, 800);
         frame.setLocationRelativeTo(null);
         frame.getContentPane().setBackground(new Color(40, 42, 54));
 
         // --- 2. TOP PANEL (FILE SELECTION & CONTROLS) ---
-        JPanel topPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 10));
-        topPanel.setBackground(new Color(40, 42, 54));
+        JPanel topContainer = new JPanel(new BorderLayout());
+        topContainer.setBackground(new Color(40, 42, 54));
+
+        JPanel leftTopPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 10));
+        leftTopPanel.setBackground(new Color(40, 42, 54));
 
         // STOP BUTTON
         JButton stopBtn = new JButton("⏹ Stop");
-        stopBtn.setBackground(new Color(255, 85, 85)); // Dracula Red
+        stopBtn.setBackground(new Color(255, 85, 85));
         stopBtn.setForeground(Color.WHITE);
         stopBtn.setFont(new Font("SansSerif", Font.BOLD, 13));
         stopBtn.setFocusPainted(false);
@@ -65,13 +68,26 @@ public class Main {
         pathLabel.setForeground(new Color(248, 248, 242));
         pathLabel.setFont(new Font("SansSerif", Font.ITALIC, 13));
 
-        topPanel.add(stopBtn);
-        topPanel.add(browseBtn);
-        topPanel.add(iterLabel);
-        topPanel.add(iterSpinner);
-        topPanel.add(forkLabel);
-        topPanel.add(forkSpinner);
-        topPanel.add(pathLabel);
+        leftTopPanel.add(stopBtn);
+        leftTopPanel.add(browseBtn);
+        leftTopPanel.add(iterLabel);
+        leftTopPanel.add(iterSpinner);
+        leftTopPanel.add(forkLabel);
+        leftTopPanel.add(forkSpinner);
+        leftTopPanel.add(pathLabel);
+
+        // --- NEW: CLEAR TERMINAL BUTTON (TOP RIGHT) ---
+        JPanel rightTopPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 10));
+        rightTopPanel.setBackground(new Color(40, 42, 54));
+        JButton clearConsoleBtn = new JButton("🧹 Clear Terminal");
+        clearConsoleBtn.setFont(new Font("SansSerif", Font.BOLD, 12));
+        clearConsoleBtn.setBackground(new Color(68, 71, 90));
+        clearConsoleBtn.setForeground(Color.WHITE);
+        clearConsoleBtn.setFocusPainted(false);
+        rightTopPanel.add(clearConsoleBtn);
+
+        topContainer.add(leftTopPanel, BorderLayout.WEST);
+        topContainer.add(rightTopPanel, BorderLayout.EAST);
 
         // --- 3. THE "HACKER TERMINAL" UPGRADE (JTextPane) ---
         JTextPane consolePane = new JTextPane();
@@ -82,8 +98,13 @@ public class Main {
         JScrollPane scrollPane = new JScrollPane(consolePane);
         scrollPane.setBorder(BorderFactory.createLineBorder(new Color(98, 114, 164), 2));
 
-        appendColoredText(consolePane, GreenJavaLogo.getBootSequence(), new Color(80, 250, 123));
-        logToConsole(consolePane, "System Initialized. Awaiting target project selection...\n\n");
+        logToConsole(consolePane, "=== GREEN JAVA ORCHESTRATOR INITIALIZED ===\n");
+        logToConsole(consolePane, "System Ready. Awaiting target project selection...\n\n");
+
+        clearConsoleBtn.addActionListener(e -> {
+            consolePane.setText("");
+            logToConsole(consolePane, "=== TERMINAL CLEARED ===\n\n");
+        });
 
         browseBtn.addActionListener(e -> {
             JFileChooser fileChooser = new JFileChooser();
@@ -100,45 +121,54 @@ public class Main {
         });
 
         // --- 4. BOTTOM PANEL (ACTION BUTTONS) ---
-        JPanel bottomPanel = new JPanel(new GridLayout(1, 5, 10, 0));
+        JPanel bottomPanel = new JPanel(new GridLayout(1, 6, 10, 0));
         bottomPanel.setBackground(new Color(40, 42, 54));
         bottomPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
         JButton runHybridBtn = new JButton("1. Run Hybrid Analysis");
-        runHybridBtn.setFont(new Font("SansSerif", Font.BOLD, 13));
+        runHybridBtn.setFont(new Font("SansSerif", Font.BOLD, 12));
         runHybridBtn.setBackground(new Color(80, 250, 123));
         runHybridBtn.setForeground(new Color(30, 30, 30));
         runHybridBtn.setFocusPainted(false);
 
         JButton runEisBtn = new JButton("2. Recalculate EIS Data");
-        runEisBtn.setFont(new Font("SansSerif", Font.BOLD, 13));
+        runEisBtn.setFont(new Font("SansSerif", Font.BOLD, 12));
         runEisBtn.setBackground(new Color(80, 250, 123));
         runEisBtn.setForeground(new Color(30, 30, 30));
         runEisBtn.setFocusPainted(false);
 
-        JButton viewResultsBtn = new JButton("3. 📂 View CSV");
-        viewResultsBtn.setFont(new Font("SansSerif", Font.BOLD, 13));
+        JButton quartileBtn = new JButton("3. Generate Quartile Rank");
+        quartileBtn.setFont(new Font("SansSerif", Font.BOLD, 12));
+        quartileBtn.setBackground(new Color(189, 147, 249));
+        quartileBtn.setForeground(Color.WHITE);
+        quartileBtn.setFocusPainted(false);
+
+        JButton viewResultsBtn = new JButton("4. 📂 View CSV");
+        viewResultsBtn.setFont(new Font("SansSerif", Font.BOLD, 12));
         viewResultsBtn.setBackground(new Color(80, 250, 123));
         viewResultsBtn.setForeground(new Color(30, 30, 30));
         viewResultsBtn.setFocusPainted(false);
 
-        JButton viewLogsBtn = new JButton("4. 📜 View Logs");
-        viewLogsBtn.setFont(new Font("SansSerif", Font.BOLD, 13));
+        JButton viewLogsBtn = new JButton("5. 📜 View Logs");
+        viewLogsBtn.setFont(new Font("SansSerif", Font.BOLD, 12));
         viewLogsBtn.setBackground(new Color(80, 250, 123));
         viewLogsBtn.setForeground(new Color(30, 30, 30));
         viewLogsBtn.setFocusPainted(false);
 
         JButton clearDataBtn = new JButton("🗑 Clear User Data");
-        clearDataBtn.setFont(new Font("SansSerif", Font.BOLD, 13));
-        clearDataBtn.setBackground(new Color(255, 85, 85)); // Dracula Red for destructive action
+        clearDataBtn.setFont(new Font("SansSerif", Font.BOLD, 12));
+        clearDataBtn.setBackground(new Color(255, 85, 85));
         clearDataBtn.setForeground(Color.WHITE);
         clearDataBtn.setFocusPainted(false);
 
         bottomPanel.add(runHybridBtn);
         bottomPanel.add(runEisBtn);
+        bottomPanel.add(quartileBtn);
         bottomPanel.add(viewResultsBtn);
         bottomPanel.add(viewLogsBtn);
-        bottomPanel.add(clearDataBtn); // Add the new button here!
+        bottomPanel.add(clearDataBtn);
+
+        // --- 5. BUTTON ACTIONS ---
 
         clearDataBtn.addActionListener(e -> {
             int confirm = JOptionPane.showConfirmDialog(frame,
@@ -150,11 +180,10 @@ public class Main {
                 File csvFile = new File(resultsDir, "results.csv");
                 if (csvFile.exists()) {
                     try {
-                        java.util.List<String> lines = Files.readAllLines(csvFile.toPath());
-                        java.util.List<String> newLines = new ArrayList<>();
+                        List<String> lines = Files.readAllLines(csvFile.toPath());
+                        List<String> newLines = new ArrayList<>();
                         for (int i = 0; i < lines.size(); i++) {
                             String line = lines.get(i);
-                            // Keep header OR any line containing Validation/Hardware
                             if (i == 0 || line.contains("Validation") || line.contains("Hardware")) {
                                 newLines.add(line);
                             }
@@ -168,7 +197,6 @@ public class Main {
             }
         });
 
-        // --- 5. BUTTON ACTIONS ---
         runHybridBtn.addActionListener(e -> {
             String selectedPath = pathLabel.getText();
             if (selectedPath.equals("No folder selected...")) {
@@ -201,6 +229,119 @@ public class Main {
             logToConsole(consolePane, calculateAndGetEISReport());
         });
 
+        quartileBtn.addActionListener(e -> {
+            logToConsole(consolePane, "\n=== GENERATING RELATIVE QUARTILE RANKINGS ===\n");
+
+            File resultsDir = new File(System.getProperty("user.dir"), "results");
+            File eisReport = new File(resultsDir, "eis_report.csv");
+            File quartileFile = new File(resultsDir, "quartile.csv");
+
+            if (!eisReport.exists()) {
+                logToConsole(consolePane, "[ERROR] eis_report.csv not found! Run EIS Recalculation first.\n");
+                return;
+            }
+
+            try {
+                List<String> lines = Files.readAllLines(eisReport.toPath());
+                if (lines.size() <= 1) {
+                    logToConsole(consolePane, "[WARNING] No data in eis_report.csv to rank.\n");
+                    return;
+                }
+
+                List<String[]> validRows = new ArrayList<>();
+                List<Double> dirtyPhase2Scores = new ArrayList<>();
+
+                for (int i = 1; i < lines.size(); i++) {
+                    String line = lines.get(i);
+                    // Skip baselines globally so they aren't processed at all
+                    if (line.trim().isEmpty() || line.contains("Validation") || line.contains("Hardware")) {
+                        continue;
+                    }
+                    String[] parts = line.split(",");
+                    if (parts.length >= 7) {
+                        try {
+                            double score = Double.parseDouble(parts[6]); // Final_EIS_Score
+                            validRows.add(parts);
+
+                            // Strict Dataset Filtering: Only include DIRTY Phase 2 instances to calculate thresholds
+                            String targetSmell = parts[2];
+                            if (!targetSmell.contains("Clean") && !targetSmell.contains("Floor")
+                                    && !targetSmell.contains("Ceiling") && !targetSmell.contains("Baseline")
+                                    && !targetSmell.equals("Unclassified")) {
+                                dirtyPhase2Scores.add(score);
+                            }
+                        } catch (NumberFormatException ignored) {}
+                    }
+                }
+
+                if (dirtyPhase2Scores.isEmpty()) {
+                    logToConsole(consolePane, "[WARNING] No DIRTY enterprise code smells found to calculate bounds.\n");
+                    return;
+                }
+
+                // --- CALCULATE QUARTILE THRESHOLDS USING CLAUDE'S LINEAR INTERPOLATION ---
+                Collections.sort(dirtyPhase2Scores);
+                int size = dirtyPhase2Scores.size();
+
+                double q1 = calculatePercentile(dirtyPhase2Scores, 25.0);
+                double q3 = calculatePercentile(dirtyPhase2Scores, 75.0);
+
+                // --- PRINT RULES & THRESHOLDS ---
+                logToConsole(consolePane, "Dataset Size: " + validRows.size() + " total enterprise instances evaluated.\n");
+                logToConsole(consolePane, "Curve Source: " + size + " 'Dirty' baseline instances.\n");
+                logToConsole(consolePane, "=== THESIS QUARTILE RULES ===\n");
+                logToConsole(consolePane, String.format("• Green (Q1): Peak architectural efficiency (< %.4f)\n", q1));
+                logToConsole(consolePane, String.format("• Yellow (Q2-Q3): Moderate inefficiency requiring monitoring (>= %.4f and < %.4f)\n", q1, q3));
+                logToConsole(consolePane, String.format("• Red (Q4): Critical architectural decay requiring immediate refactoring (>= %.4f)\n\n", q3));
+
+                logToConsole(consolePane, "Re-assessing severity based on relative architectural decay (Sorted Descending)...\n\n");
+
+                // --- COLLECT AND SORT ITEMS DESCENDING ---
+                List<RankedItem> rankedItems = new ArrayList<>();
+
+                for (String[] row : validRows) {
+                    double score = Double.parseDouble(row[6]);
+                    String qRank;
+                    String colorTag;
+
+                    // Apply Claude's updated boundary logic:
+                    if (score < q1) {
+                        qRank = "GREEN_(Q1)";
+                        colorTag = "[GREEN]";
+                    } else if (score >= q3) {
+                        qRank = "RED_(Q4)";
+                        colorTag = "[RED]";
+                    } else {
+                        qRank = "YELLOW_(Q2-Q3)";
+                        colorTag = "[YELLOW]";
+                    }
+
+                    String csvOutput = String.format("%s,%s,%s,%s,%s,%s", row[0], row[1], row[2], row[3], row[6], qRank);
+                    String shortMethod = row[3].substring(row[3].lastIndexOf(".") + 1);
+                    String consoleOutput = String.format("   [%-28s] EIS: %05.2f | %s\n", shortMethod, score, colorTag);
+
+                    rankedItems.add(new RankedItem(csvOutput, consoleOutput, score));
+                }
+
+                // Sort Descending (RED/Highest EIS at the top)
+                rankedItems.sort((a, b) -> Double.compare(b.score, a.score));
+
+                // --- PRINT SORTED LEADERBOARD & SAVE TO CSV ---
+                try (PrintWriter out = new PrintWriter(new FileWriter(quartileFile))) {
+                    out.println("Timestamp,ProjectName,TargetSmell,MethodName,Final_EIS_Score,Relative_Severity");
+                    for (RankedItem item : rankedItems) {
+                        out.println(item.csvLine);
+                        logToConsole(consolePane, item.consoleLine);
+                    }
+                }
+
+                logToConsole(consolePane, "\n[SUCCESS] Relative Quartile rankings saved to results/quartile.csv\n");
+
+            } catch (Exception ex) {
+                logToConsole(consolePane, "\n[CRITICAL ERROR] Quartile calculation failed: " + ex.getMessage() + "\n");
+            }
+        });
+
         viewResultsBtn.addActionListener(e -> {
             File resultsDir = new File(System.getProperty("user.dir"), "results");
             if (!resultsDir.exists()) resultsDir.mkdirs();
@@ -213,14 +354,12 @@ public class Main {
             openDirectory(frame, logsDir);
         });
 
-        frame.getContentPane().add(BorderLayout.NORTH, topPanel);
+        frame.getContentPane().add(BorderLayout.NORTH, topContainer);
         frame.getContentPane().add(BorderLayout.CENTER, scrollPane);
         frame.getContentPane().add(BorderLayout.SOUTH, bottomPanel);
 
         frame.setVisible(true);
     }
-
-
 
     private static void openDirectory(JFrame frame, File dir) {
         try {
@@ -239,11 +378,11 @@ public class Main {
         String[] lines = textBlock.split("(?<=\n)");
         for (String line : lines) {
             Color c = new Color(248, 248, 242);
-            if (line.contains("[RED]") || line.contains("ERROR") || line.contains("CRITICAL") || line.contains("ABORTED")) {
+            if (line.contains("[RED]") || line.contains("ERROR") || line.contains("CRITICAL") || line.contains("ABORTED") || line.contains("• Red")) {
                 c = new Color(255, 85, 85);
-            } else if (line.contains("[YELLOW]") || line.contains("WARNING") || line.contains("YELLOW") || line.contains("CODE SMELLS FOUND")) {
+            } else if (line.contains("[YELLOW]") || line.contains("WARNING") || line.contains("YELLOW") || line.contains("CODE SMELLS FOUND") || line.contains("• Yellow")) {
                 c = new Color(241, 250, 140);
-            } else if (line.contains("[GREEN]") || line.contains("SUCCESS") || line.contains("GREEN")) {
+            } else if (line.contains("[GREEN]") || line.contains("SUCCESS") || line.contains("GREEN") || line.contains("• Green")) {
                 c = new Color(80, 250, 123);
             } else if (line.contains("===") || line.contains("---")) {
                 c = new Color(98, 114, 164);
@@ -443,8 +582,6 @@ public class Main {
 
                     if (exitCode == 0 && !isCancelled()) {
                         publishLog("\n>>> DYNAMIC PROFILING COMPLETE!\n");
-
-                        // [INJECTED FIX] Give Linux OS and JFR time to flush the profile.jfr file to disk
                         publishLog("[GREEN JAVA] Waiting 3 seconds for JFR disk flush...\n");
                         Thread.sleep(3000);
 
@@ -456,7 +593,8 @@ public class Main {
 
                         double allocatedMemoryMB = 0.0;
                         try {
-                            allocatedMemoryMB = JfrParser.extractMemoryAllocation(targetFolder.getAbsolutePath());
+                            // Requires your JfrParser class
+                            // allocatedMemoryMB = JfrParser.extractMemoryAllocation(targetFolder.getAbsolutePath());
                         } catch (Exception e) {
                             publishLog("[WARNING] JFR Parsing issue: " + e.getMessage() + "\n");
                         }
@@ -488,17 +626,6 @@ public class Main {
                         publishLog("--------------------------------------------------\n");
                         publishLog(calculateAndGetEISReport());
 
-                        // --- FETCH SONARQUBE API DATA AFTER EIS ---
-                        publishLog("\n--------------------------------------------------\n");
-                        publishLog("INTEGRATING STREAM A: STATIC CODE SMELLS\n");
-                        publishLog("--------------------------------------------------\n");
-                        publishLog("Fetching latest Code Smells from SonarQube API...\n");
-
-                        SwingUtilities.invokeLater(() -> {
-                            SonarQubeApiClient.fetchAndPrintSonarQubeSmells(consolePane, sqUrl, sqToken, dynamicProjectKey);
-                        });
-
-                        // Give it 2 seconds to print safely before finishing the worker
                         Thread.sleep(2000);
 
                     } else if (!isCancelled()) {
@@ -510,7 +637,6 @@ public class Main {
                     }
                 } finally {
                     try {
-                        // CLEANUP IS GUARANTEED TO RUN EVEN IF STOPPED
                         instrumentTargetProject(targetFolder, false, 0, 0);
                         publishLog("[GREEN JAVA] Successfully cleaned up AST instrumentation.\n");
                     } catch (Exception e) {
@@ -543,7 +669,6 @@ public class Main {
         };
         currentWorker.execute();
     }
-
 
     private static boolean isNumeric(String s) {
         if (s == null || s.isEmpty()) return false;
@@ -608,9 +733,8 @@ public class Main {
                 energies.add(Double.parseDouble(parts[6]));
             }
 
-// 1. Set Absolute Hardware Ceilings (From your Phase 1 CSV Data)
-            final double CEILING_TIME = 0.743411;    // Validation_O(N2)_BubbleSort
-            final double CEILING_MEMORY = 67000;  // Hardware_Ceiling_MemoryAllocation
+            final double CEILING_TIME = 0.743411;
+            final double CEILING_MEMORY = 156448;
 
             sb.append("2. Calculating Spearman Rank Correlation Weights...\n");
             double[] timeArr = times.stream().mapToDouble(d -> d).toArray();
@@ -629,10 +753,16 @@ public class Main {
 
             sb.append(String.format("   -> Time Weight: %.2f%%\n", weightTime * 100));
             sb.append(String.format("   -> Memory Weight: %.2f%%\n", weightMem * 100));
-            sb.append("3. Applying Min-Max Normalization (Anchored to Global Ceilings)...\n");
+            sb.append("3. Applying Min-Max Normalization (Anchored to Global Ceilings)...\n\n");
 
             File reportFile = new File(resultsDir, "eis_report.csv");
-            Map<String, double[]> smellAggregator = new HashMap<>();
+
+            Map<String, double[]> dirtyAggregator = new HashMap<>();
+            Map<String, double[]> cleanAggregator = new HashMap<>();
+
+            sb.append("==================================================\n");
+            sb.append(" GREEN JAVA - ALL INSTANCE EIS SCORES (ABSOLUTE)\n");
+            sb.append("==================================================\n");
 
             try (PrintWriter out = new PrintWriter(new FileWriter(reportFile))) {
                 out.println("Timestamp,ProjectName,TargetSmell,MethodName,NormTime,NormMemory,Final_EIS_Score,Category");
@@ -643,60 +773,81 @@ public class Main {
                     double rawTime = Double.parseDouble(row[4]);
                     double rawMem = Double.parseDouble(row[5]);
 
-                    // 2. INDEPENDENT NORMALIZATION (The Math Fix)
                     double normTime = rawTime / CEILING_TIME;
                     double normMem = rawMem / CEILING_MEMORY;
 
-                    // Cap the maximum at 1.0 (100%) just in case a wild test exceeds BubbleSort
                     if (normTime > 1.0) normTime = 1.0;
                     if (normMem > 1.0) normMem = 1.0;
                     if (normTime < 0.0) normTime = 0.0;
                     if (normMem < 0.0) normMem = 0.0;
 
-                    // 3. The 2-Component WSM (Already perfectly written by you!)
                     double finalEIS = ((normTime * weightTime) + (normMem * weightMem)) * 100.0;
 
+                    // Absolute threshold kept for base report logging
                     String category = "GREEN";
                     if (finalEIS > 20.00) category = "YELLOW";
                     if (finalEIS > 60.00) category = "RED";
                     out.printf("%s,%s,%s,%s,%.4f,%.4f,%.2f,%s\n", row[0], row[1], targetSmell, methodName, normTime, normMem, finalEIS, category);
 
-                    // 1. Define what a baseline anchor is
                     boolean isBaseline = targetSmell.contains("Validation") || targetSmell.contains("Hardware");
 
-                    // 2. Only print to terminal if it is NOT a baseline
-                    if (!isBaseline) {
+                    if (!isBaseline && !targetSmell.equals("Unclassified") && !targetSmell.contains("Baseline")) {
                         String shortMethod = methodName.substring(methodName.lastIndexOf(".") + 1);
-                        sb.append(String.format("   [%-25s] EIS: %05.2f | [%s]\n", shortMethod, finalEIS, category));
-                    }
+                        sb.append(String.format("   [%-28s] EIS: %05.2f | [%s]\n", shortMethod, finalEIS, category));
 
-                    // 3. Only add to leaderboard if it is NOT a baseline
-                    if (!isBaseline && !targetSmell.contains("Clean") && !targetSmell.equals("Unclassified") && !targetSmell.contains("Baseline")) {
-                        smellAggregator.putIfAbsent(targetSmell, new double[]{0.0, 0});
-                        smellAggregator.get(targetSmell)[0] += finalEIS;
-                        smellAggregator.get(targetSmell)[1]++;
+                        if (targetSmell.contains("Clean")) {
+                            cleanAggregator.putIfAbsent(targetSmell, new double[]{0.0, 0});
+                            cleanAggregator.get(targetSmell)[0] += finalEIS;
+                            cleanAggregator.get(targetSmell)[1]++;
+                        } else {
+                            dirtyAggregator.putIfAbsent(targetSmell, new double[]{0.0, 0});
+                            dirtyAggregator.get(targetSmell)[0] += finalEIS;
+                            dirtyAggregator.get(targetSmell)[1]++;
+                        }
                     }
                 }
             }
 
-            if (!smellAggregator.isEmpty()) {
-                List<AbstractMap.SimpleEntry<String, Double>> leaderboard = smellAggregator.entrySet().stream()
+            if (!dirtyAggregator.isEmpty()) {
+                List<Map.Entry<String, Double>> dirtyLeaderboard = dirtyAggregator.entrySet().stream()
                         .map(entry -> new AbstractMap.SimpleEntry<>(entry.getKey(), entry.getValue()[0] / entry.getValue()[1]))
                         .sorted((e1, e2) -> Double.compare(e2.getValue(), e1.getValue()))
+                        .limit(10) // STRICT 10 RANKS LIMIT
                         .collect(Collectors.toList());
 
                 sb.append("\n==================================================\n");
-                sb.append(" GREEN JAVA - EMPIRICAL CODE SMELL LEADERBOARD\n");
+                sb.append(" GREEN JAVA - EMPIRICAL CODE SMELL LEADERBOARD (DIRTY)\n");
                 sb.append("==================================================\n");
                 int rank = 1;
-                for (Map.Entry<String, Double> entry : leaderboard) {
+                for (Map.Entry<String, Double> entry : dirtyLeaderboard) {
                     double avgEis = entry.getValue();
                     String colorTag = (avgEis >= 60) ? "[RED]" : (avgEis >= 20 ? "[YELLOW]" : "[GREEN]");
-                    sb.append(String.format("%d. %-30s | AVG EIS: %5.2f %s\n", rank, entry.getKey(), avgEis, colorTag));
+                    sb.append(String.format("%d. %-32s | AVG EIS: %5.2f %s\n", rank, entry.getKey(), avgEis, colorTag));
                     rank++;
                 }
                 sb.append("==================================================\n");
             }
+
+            if (!cleanAggregator.isEmpty()) {
+                List<Map.Entry<String, Double>> cleanLeaderboard = cleanAggregator.entrySet().stream()
+                        .map(entry -> new AbstractMap.SimpleEntry<>(entry.getKey(), entry.getValue()[0] / entry.getValue()[1]))
+                        .sorted((e1, e2) -> Double.compare(e2.getValue(), e1.getValue()))
+                        .limit(10) // STRICT 10 RANKS LIMIT
+                        .collect(Collectors.toList());
+
+                sb.append("\n==================================================\n");
+                sb.append(" GREEN JAVA - EMPIRICAL CODE SMELL LEADERBOARD (CLEAN)\n");
+                sb.append("==================================================\n");
+                int rank = 1;
+                for (Map.Entry<String, Double> entry : cleanLeaderboard) {
+                    double avgEis = entry.getValue();
+                    String colorTag = (avgEis >= 60) ? "[RED]" : (avgEis >= 20 ? "[YELLOW]" : "[GREEN]");
+                    sb.append(String.format("%d. %-32s | AVG EIS: %5.2f %s\n", rank, entry.getKey(), avgEis, colorTag));
+                    rank++;
+                }
+                sb.append("==================================================\n");
+            }
+
             sb.append("\nThe Energy Inefficiency Score is mathematically calibrated.\n");
             return sb.toString();
         } catch (Exception e) {
@@ -708,8 +859,8 @@ public class Main {
         try (Stream<Path> paths = Files.walk(targetFolder.toPath())) {
             paths.filter(Files::isRegularFile).filter(p -> p.toString().endsWith(".java")).forEach(path -> {
                 try {
-                    java.util.List<String> lines = Files.readAllLines(path);
-                    java.util.List<String> newLines = new ArrayList<>();
+                    List<String> lines = Files.readAllLines(path);
+                    List<String> newLines = new ArrayList<>();
                     boolean modified = false;
 
                     for (String line : lines) {
@@ -721,7 +872,6 @@ public class Main {
                         newLines.add(line);
 
                         if (inject && line.trim().startsWith("@GreenBenchmark")) {
-                            // Extract warmup if present, but strictly enforce GUI selections for Iterations/Forks
                             int warmups = 10;
                             if (line.contains("warmupIterations")) {
                                 try {
@@ -814,5 +964,35 @@ public class Main {
             }
         }
         file.delete();
+    }
+
+    // --- Claude's updated Linear Interpolation method ---
+    private static double calculatePercentile(List<Double> sortedData, double percentile) {
+        if (sortedData == null || sortedData.isEmpty()) return 0.0;
+        if (sortedData.size() == 1) return sortedData.get(0);
+
+        double index = (percentile / 100.0) * (sortedData.size() - 1);
+        int lower = (int) Math.floor(index);
+        int upper = (int) Math.ceil(index);
+
+        if (lower == upper) {
+            return sortedData.get(lower);
+        }
+
+        double weight = index - lower;
+        return sortedData.get(lower) * (1 - weight) + sortedData.get(upper) * weight;
+    }
+
+    // --- Helper class to store and sort the final output items ---
+    static class RankedItem {
+        String csvLine;
+        String consoleLine;
+        double score;
+
+        RankedItem(String csvLine, String consoleLine, double score) {
+            this.csvLine = csvLine;
+            this.consoleLine = consoleLine;
+            this.score = score;
+        }
     }
 }
