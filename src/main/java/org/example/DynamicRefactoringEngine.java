@@ -1,7 +1,5 @@
 package org.example;
 
-import java.util.Map;
-
 public class DynamicRefactoringEngine {
 
     public static String generateInsight(
@@ -11,12 +9,21 @@ public class DynamicRefactoringEngine {
             double eisScore, String absoluteTier, String relativeTier,
             String staticLine) {
 
-        // PROFESSOR'S FILTER: If the smell doesn't have "dirty" (or is explicitly clean), return empty!
         String sLower = targetSmell.toLowerCase();
-        if (!sLower.contains("dirty") &&
-                (sLower.contains("clean") || sLower.contains("floor") || sLower.contains("ceiling") || sLower.contains("baseline"))) {
+
+        // 1. HARDWARE FILTER: Completely ignore synthetic calibration/validation runs
+        if (sLower.contains("floor") || sLower.contains("ceiling") || sLower.contains("baseline") || sLower.contains("validation")) {
             return "";
         }
+
+        // 2. DYNAMIC METRIC FILTER (The upgraded Context-Aware Suppression)
+        // If the method's physical telemetry places it in Q1 (Green), it autonomously declares it optimized.
+        if (relativeTier.contains("GREEN") || relativeTier.contains("Q1")) {
+            return String.format("\n   [SYSTEM INTELLIGENCE] Target method '%s' evaluated at EIS %.2f. \n" +
+                    "   -> Status: Highly Efficient (Below Q1 Threshold). No refactoring required.\n", staticLine, eisScore);
+        }
+
+        // --- If it passes the filter, generate the full Refactoring Blueprint ---
 
         StringBuilder insight = new StringBuilder();
 

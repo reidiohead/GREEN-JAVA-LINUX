@@ -170,7 +170,7 @@
             topContainer.add(leftTopPanel, BorderLayout.WEST);
             topContainer.add(rightTopPanel, BorderLayout.EAST);
 
-            // --- 3. THE "HACKER TERMINAL" UPGRADE (JTextPane) ---
+
             JTextPane consolePane = new JTextPane();
             consolePane.setEditable(false);
             consolePane.setBackground(new Color(30, 30, 30));
@@ -179,16 +179,40 @@
             JScrollPane scrollPane = new JScrollPane(consolePane);
             scrollPane.setBorder(BorderFactory.createLineBorder(new Color(98, 114, 164), 2));
 
-            logToConsole(consolePane, "=== GREEN JAVA ORCHESTRATOR INITIALIZED ===\n");
-            logToConsole(consolePane, "System Ready. Awaiting target project selection...\n\n");
+            consolePane.addMouseWheelListener(e -> {
+                if (e.isControlDown()) {
+                    Font currentFont = consolePane.getFont();
+                    int newSize = currentFont.getSize();
 
+                    // e.getWheelRotation() is negative when scrolling UP (Zoom In)
+                    if (e.getWheelRotation() < 0) {
+                        newSize += 2;
+                    } else {
+                        newSize -= 2; // Scrolling DOWN (Zoom Out)
+                    }
+
+                    // Set boundaries so it doesn't get unreadably small or massive
+                    if (newSize >= 10 && newSize <= 48) {
+                        consolePane.setFont(new Font(currentFont.getName(), currentFont.getStyle(), newSize));
+                    }
+                } else {
+                    // Pass the scroll event to the ScrollPane if CTRL is not held
+                    scrollPane.dispatchEvent(e);
+                }
+            });
+
+            // Print the boot sequence logo first!
+            logToConsole(consolePane, GreenJavaLogo.getBootSequence());
+
+            logToConsole(consolePane, "System Ready. Awaiting target project selection...\n\n");
             initializeDataLake(consolePane);
 
             clearConsoleBtn.addActionListener(e -> {
                 consolePane.setText("");
-                logToConsole(consolePane, "=== TERMINAL CLEARED ===\n\n");
+                logToConsole(consolePane, GreenJavaLogo.getBootSequence()); // Prints logo again
+                logToConsole(consolePane, "System Ready. Awaiting target project selection...\n\n");
             });
-
+            //Business Logic Layer
             browseBtn.addActionListener(e -> {
                 JFileChooser fileChooser = new JFileChooser();
                 fileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);

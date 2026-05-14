@@ -22,15 +22,6 @@ target/
 .springBeans
 .sts4-cache
 
-# SonarQube Scanner
-.scannerwork/
-
-# JoularJX & JMH Output
-joularjx-result/
-*.jfr
-*.csv
-
-
 ### NetBeans ###
 /nbproject/private/
 /nbbuild/
@@ -46,3 +37,17 @@ build/
 
 ### Mac OS ###
 .DS_Store
+
+# ==========================================
+# GREEN JAVA CUSTOM IGNORES
+# ==========================================
+
+# SonarQube Scanner
+.scannerwork/
+**/.scannerwork/
+
+# JoularJX & JMH Output
+joularjx-result/
+**/joularjx-result/
+*.jfr
+*.csv
